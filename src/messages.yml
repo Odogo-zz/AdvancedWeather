@@ -1,0 +1,16 @@
+#Copyright (c) 2019 Odogo
+
+#Current Placeholders:
+# %forecast%
+# %temperature%
+# %rainChance%
+#
+
+forecast-information:
+ - '&6-=- Daily Forecast Notification -=-'
+ - ' '
+ - '&eCurrent Forecast: &a%forecast%'
+ - '&eTemperature: &a%temperature%'
+ - '&eRain Chance: &a%rainChance%'
+ - ' '
+ - '&6-=- Daily Forecast Notification -=-'

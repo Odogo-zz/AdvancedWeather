@@ -1,0 +1,28 @@
+#Copyright (c) 2019 Odogo
+
+#This is the configuration file for the AdvancedWeather plugin. Comments above the main line will describe what the line will do
+#and how it effects the plugins mechanics.
+
+#This will tell the plugin what world should the weather be enabled.
+#If the world doesn't exist, the plugin will disable with an error messsage.
+#THIS IS CASE SENSITIVE!
+defaulted-selected-world: "world"
+
+#This will set the probability that rain (or thunderstorms) will come.
+#If "random-probability" is true, this will let the plugin choose if the rain starts or not.
+#If "random-probability" is false, this will go to the fixed-probability.
+#-=-
+#If "less-than" is true, this will check if a random number is less than the "percentage-probability", if so, it WILL rain.
+#If "less-than" is false, this will check if the random number is greater than the "percentage-probability", if so, it WILL rain.
+weather-probability:
+   random-probability: true
+   fixed-probability:
+      less-than: true
+      percentage-probability: 50
+  
+#If "use-default-messages" is true, this will let the plugin use it's own default messages.
+#If "use-default-messages" if false, this will let YOU (messages.yml) change the messages.
+use-default-messages: true
+
+#Plays a ding sound when the forecast message is posted.
+play-sound-on-message: true

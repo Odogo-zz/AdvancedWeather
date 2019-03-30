@@ -1,30 +1,34 @@
 package me.odogo.aweather;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
 public class Core extends JavaPlugin {
 
 	public final String prefix = ChatColor.GRAY + "[" + ChatColor.GOLD + " Advanced " + ChatColor.RED + "Weather" + ChatColor.GRAY + "] " + ChatColor.RESET;
-	public World selectedWorld;
-
+	public World world;
+	public FileConfiguration message;
 	public boolean enableEffects = false;
 
 	@Override
 	public void onEnable() {
-		registerConfigs();
+
+		regConfigYML();
 
 		int i = 0;
 		int max = this.getServer().getWorlds().size();
-
 		boolean foundWorld = false;
 
 		for(World worlds : this.getServer().getWorlds()) {
@@ -33,20 +37,18 @@ public class Core extends JavaPlugin {
 				break;
 			}
 
-			if(worlds.getName().equals(getConfig().getString("default-enabled-world"))) {
-				selectedWorld = worlds;
+			if(worlds.getName().equals(getConfig().getString("defaulted-selected-world"))) {
+				world = worlds;
 				foundWorld = true;
 				break;
 			}
 
 			i++;
-
 			if(i == max) {
 				IllegalStateException e = new IllegalStateException("The world listed in the config could not be found.");
 				e.printStackTrace();
 				break;
 			}
-
 		}
 
 		if(!foundWorld) {
@@ -54,7 +56,7 @@ public class Core extends JavaPlugin {
 			return;
 		}
 
-		registerEvents();
+		regOtherConfig();
 		startWeatherTimer();
 	}
 
@@ -63,16 +65,18 @@ public class Core extends JavaPlugin {
 
 	}
 
-	private void registerConfigs() {
-
-		getConfig().addDefault("default-enabled-world", "world");
-		getConfig().options().copyDefaults(true);
-		saveConfig();
-
+	private void regConfigYML() {
+		this.saveDefaultConfig();
 	}
 
-	private void registerEvents() {
-		PluginManager pm = this.getServer().getPluginManager();
+	private void regOtherConfig() {
+		File mes = new File(this.getDataFolder(), "messages.yml");
+
+		if(!mes.exists()) {
+			this.saveResource("messages.yml", false);
+		}
+
+		this.message = YamlConfiguration.loadConfiguration(mes);
 
 	}
 
@@ -82,75 +86,146 @@ public class Core extends JavaPlugin {
 
 			boolean alreadyDay = false;
 			boolean rain = false;
+			boolean thunder = false;
 			int secElap = 0;
-			int ticksElap = 0;
+			int tickElap = 0;
 
 			@Override
 			public void run() {
 
-				if(selectedWorld.getTime() == 23999) {
+				if(world.getTime() == 23999) {
 					rain = false;
-					enableEffects = false;
 					alreadyDay = false;
 					secElap = 0;
+					tickElap = 0;
+					enableEffects = false;
+					return;
 				}
 
 				if(alreadyDay) {
+
 					if(secElap == 120) {
 						if(rain) {
 							setRaining(true);
+						}
+
+						if(thunder) {
 							setThundering(true);
 						}
 					} else if(secElap == 60) {
 						enableEffects = true;
 					}
 
-					if(ticksElap >= 20) {
+					if(tickElap >= 20) {
 						secElap++;
-						ticksElap = 0;
+						tickElap = 0;
 					} else {
-						ticksElap++;
+						tickElap++;
 					}
-				} else { 
 
-					if(selectedWorld.getTime() == 0) {
+				} else {
+
+					if(world.getTime() == 0) {
 
 						alreadyDay = true;
 
-						int temp = new Random().nextInt((110 - 45) + 1) + 45;
-						int forecastN = new Random().nextInt((3-1) + 1) + 1;
+						int temp = new Random().nextInt((110 - 15) + 1) + 15;
+						int forecastN = new Random().nextInt((3 - 1) + 1) + 1;
 						int rainN;
-						if(forecastN == 1) { rainN = 0; } else { rainN = new Random().nextInt((100 - 1) + 1) + 1; }
+
+						if(forecastN == 1) { 
+							rainN = 0;
+						} else {
+							rainN = new Random().nextInt((100 - 0) + 1) + 0;
+						}
 
 						String forecast = "";
 
-						if(forecastN == 1) { forecast = "Sunny"; } else if(forecastN == 2) { forecast = "Rain Showers"; } else if(forecastN == 3) { forecast = "Rain Showers and Thunderstorms"; }
+						if(forecastN == 1) {
+							forecast = "Sunny";
+						} else if(forecastN == 2) {
+							forecast = "Rain Showers";
+						} else if(forecastN == 3) {
+							forecast = "Rain Showers & Thunderstorms";
+						}
 
-						String[] message = {
+						List<String> forecastNotifications;
 
-								ChatColor.GOLD + "-=- Daily Forecast Message -=-",
-								" ",
-								ChatColor.YELLOW + "Current Temperature: " + ChatColor.GREEN + temp + "°F",
-								ChatColor.YELLOW + "Forecast: " + ChatColor.GREEN + forecast,
-								ChatColor.YELLOW + "Rain Chance: " + ChatColor.GREEN + rainN + "%",
-								" ",
-								ChatColor.GOLD + "-=- Daily Forecast Message -=-",
+						if(getConfig().getBoolean("use-default-messages")) {
+							forecastNotifications = new ArrayList<String>();
+							forecastNotifications.add("&6-=- Daily Forecast Notification -=-");
+							forecastNotifications.add(" ");
+							forecastNotifications.add("&eCurrent Forecast: &a%forecast%");
+							forecastNotifications.add("&eTemperature: &a%temperature%");
+							forecastNotifications.add("&eRain Chance: &a%rainChance%");
+							forecastNotifications.add(" ");
+							forecastNotifications.add("&6-=- Daily Forecast Notification -=-");
+						} else {
+							forecastNotifications = message.getStringList("forecast-information");
+						}
 
-						};
+						ArrayList<String> fNList = new ArrayList<String>();
 
-						for(Player players : Bukkit.getOnlinePlayers()) {			
-							if(players.getWorld().getName().equals(selectedWorld.getName())) {
-								players.sendMessage(message);
-								players.playSound(players.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+						for(String fNLine : forecastNotifications) {
+
+							fNLine = fNLine.replace("%forecast%", forecast + " (" + forecastN + ")");
+							fNLine = fNLine.replace("%temperature%", temp + "°F");
+							fNLine = fNLine.replace("%rainChance%", rainN + "%");
+
+							fNList.add(ChatColor.translateAlternateColorCodes('&', fNLine));
+						}
+
+						for(Player players : Bukkit.getOnlinePlayers()) {
+							if(players.getWorld().getName().equals(world.getName())) {
+
+								for(String line : fNList) {
+									players.sendMessage(line);
+								}
+
+								if(getConfig().getBoolean("play-sound-on-message")) {
+									players.playSound(players.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+								}
 							}
 						}
 
 						if(rainN > 0) {
-							if((new Random().nextInt((100 - 1) + 1) + 1) <= rainN) {
-								rain = true;
+							if(getConfig().getBoolean("weather-probability.random-probability")) {
+								if((new Random().nextInt((100 - 0) + 1) + 0) < rainN) {
+									if(forecastN == 2) {
+										this.rain = true;
+										this.thunder = false;
+									} else if(forecastN == 3) {
+										this.rain = true;
+										this.thunder = true;
+									}
+								}
+							} else {
+								if(getConfig().getBoolean("weather-probability.fixed-probability.less-than")) {
+									if(rainN < getConfig().getInt("weather-probability.fixed-probability.percentage-probability")) {
+										if(forecastN == 2) {
+											this.rain = true;
+											this.thunder = false;
+										} else if(forecastN == 3) {
+											this.rain = true;
+											this.thunder = true;
+										}
+									}
+								} else {
+									if(rainN > getConfig().getInt("weather-probability.fixed-probability.percentage-probability")) {
+										if(forecastN == 2) {
+											this.rain = true;
+											this.thunder = false;
+										} else if(forecastN == 3) {
+											this.rain = true;
+											this.thunder = true;
+										}
+									}
+								}
 							}
 						}
+
 					}
+
 				}
 
 			}
@@ -160,18 +235,18 @@ public class Core extends JavaPlugin {
 	}
 
 	public boolean isRaining() {
-		return selectedWorld.hasStorm();
+		return world.hasStorm();
 	}
 
 	public void setRaining(boolean raining) {
-		selectedWorld.setStorm(raining);
+		world.setStorm(raining);
 	}
 
 	public boolean isThundering() {
-		return selectedWorld.isThundering();
+		return world.isThundering();
 	}
 
 	public void setThundering(boolean thunder) {
-		selectedWorld.setThundering(thunder);
+		world.setThundering(thunder);
 	}
 }
